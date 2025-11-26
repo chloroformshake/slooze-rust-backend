@@ -106,8 +106,8 @@ async fn main() {
     let addr = format!("0.0.0.0:{port}");
 
     let app = Router::new()
-        .route("/cfs-api", get(get_products).post(add_product))
-        .route("/cfs-api/{id}", put(update_product).delete(delete_product));
+        .route("/", get(get_products).post(add_product))
+        .route("/{id}", put(update_product).delete(delete_product));
 
     let listener = tokio::net::TcpListener::bind(&addr).await.expect("Could not bind port");
 
