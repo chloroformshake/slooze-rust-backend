@@ -105,11 +105,18 @@ async fn main() {
     let port = env::var("PORT").unwrap_or_else(|_| "4000".into());
     let addr = format!("0.0.0.0:{port}");
 
+    println!("🚀 Server is attempting to bind to address: {}", addr); // <--- Add this
+
     let app = Router::new()
         .route("/", get(get_products).post(add_product))
         .route("/{id}", put(update_product).delete(delete_product));
 
-    let listener = tokio::net::TcpListener::bind(&addr).await.expect("Could not bind port");
+    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap_or_else(|e| {
+        eprintln!("❌ Failed to bind to address {}: {}", addr, e); // <--- Use eprintln for errors
+        panic!("Could not bind port: {}", e); // <--- Add error details to the panic
+    });
+
+    println!("✅ Server successfully listening on {}", addr); // <--- Add this
 
     axum::serve(listener, app).await.unwrap();
 }
