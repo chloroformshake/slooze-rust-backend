@@ -1,7 +1,8 @@
-use axum::{ routing::{ get, post, put, delete }, Router, Json, extract::Path, http::StatusCode };
+use axum::{ routing::{ get, put }, Router, Json, extract::Path, http::StatusCode };
 use serde::{ Deserialize, Serialize };
 use once_cell::sync::Lazy;
 use std::sync::{ Arc, Mutex };
+use std::env;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct Product {
@@ -76,6 +77,7 @@ async fn update_product(
     payload: Json<Product>
 ) -> Result<Json<Product>, StatusCode> {
     let mut db = DB.lock().unwrap();
+
     if let Some(pos) = db.iter().position(|p| p.id == id) {
         let mut updated = payload.0;
         updated.id = id.clone();
@@ -88,9 +90,10 @@ async fn update_product(
 
 async fn delete_product(Path(id): Path<String>) -> StatusCode {
     let mut db = DB.lock().unwrap();
-    let len_before = db.len();
+    let before = db.len();
     db.retain(|p| p.id != id);
-    if db.len() < len_before {
+
+    if db.len() < before {
         StatusCode::NO_CONTENT
     } else {
         StatusCode::NOT_FOUND
@@ -99,10 +102,14 @@ async fn delete_product(Path(id): Path<String>) -> StatusCode {
 
 #[tokio::main]
 async fn main() {
+    let port = env::var("PORT").unwrap_or_else(|_| "4000".into());
+    let addr = format!("0.0.0.0:{port}");
+
     let app = Router::new()
         .route("/cfs-api", get(get_products).post(add_product))
-        .route("/cfs-api/:id", put(update_product).delete(delete_product));
+        .route("/cfs-api/{id}", put(update_product).delete(delete_product));
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:4000").await.unwrap();
+    let listener = tokio::net::TcpListener::bind(&addr).await.expect("Could not bind port");
+
     axum::serve(listener, app).await.unwrap();
 }
